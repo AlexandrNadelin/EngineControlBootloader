@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Engune control device</title>
+<link href="style.css" rel="stylesheet" type="text/css">
+<script>
+let d = document;
+
+function rebootDevice(){
+  let request = new XMLHttpRequest();
+  request.open("GET","reboot",true);
+  request.timeout = 8000;
+  request.onreadystatechange = function(){
+    if(request.readyState != 4)return;
+    if(request.status != 200){
+	  alert("Таймаут выполнения команды перезагрузки");
+    }else{
+	  alert("Устройство перезагружено успешно.");
+	}
+  }
+  try{
+    request.send(null);
+  }
+  catch(exception){
+    alert(exception);
+  }
+}
+
+function openFile(){
+let input = document.createElement('input');
+input.type = 'file';
+input.accept ='.hex';
+
+input.onchange = e => { 
+  let file = e.target.files[0];
+
+  let reader = new FileReader();
+  reader.readAsText(file,'UTF-8');
+
+  reader.onload = readerEvent => {
+    let content = readerEvent.target.result;
+	alert("Дождитесь завершения загрузки прошивки, это может занять некоторое время.");
+	let request = new XMLHttpRequest();
+	request.open("POST","UpdateData",true);
+	request.timeout = 60000;
+	request.onreadystatechange = function(){
+      if(request.readyState != 4)return;
+      if(request.status != 200)alert("Таймаут отправки прошивки!");
+      else alert("Прошивка успешно обновлена.");
+    }	
+	try{
+      request.send(content);
+    }
+    catch(exception){
+      alert(exception);
+    }
+  }
+}
+input.click();
+}
+
+function pageResizeControl(){
+  let height = d.documentElement.clientHeight;
+  if(height<500)height = 500-74;
+  else height = height-74;
+  let mainBlock = d.getElementById("mainBlock");
+  if(mainBlock!=mainBlock) return;
+  d.getElementById("mainBlock").setAttribute("style","height:"+height+"px");
+}
+
+function pageLoad(){
+ pageResizeControl(); 
+}
+
+</script>
+</head>
+<body onload="pageLoad()" onresize="pageResizeControl()">
+  <div class="header">
+    <h1>Устройство контроля состояния двигателя</h1>
+  </div>
+  <div class="divTable">
+    <div class="navigationBar">
+      <ul class = "menu">
+        <li><a href = "Index.html" onclick="alert('Дождитесь перехода на страницу сетевых настроек')">Сетевые настройки</a></li>
+        <li><a href = "Control.html" onclick="alert('Дождитесь перехода на страницу управления и контроля')">Управление и контроль</a></li>
+        <li><a href = "Debug.html" onclick="alert('Дождитесь перехода на страницу отладки')">Отладка</a></li>
+        <li><a href = "Update.html">Обновление</a></li>
+      </ul>
+    </div>
+  <div  id="mainBlock" class="mainBlock">
+    <h2>Обновление</h2>
+    <div class="divTable">
+      <div class="divCell">
+        <div class = "vBlock"><input type="button" class="long" value = "Открыть файл" onclick="openFile()"></div>
+      </div>
+      <div class="divCell">
+        <!--div class = "vBlock"><input type="button" class="long" value = "Перезагрузить устройство" onclick="rebootDevice()"></div-->
+      </div>
+    </div>
+  </div>
+</body>
+</html>
