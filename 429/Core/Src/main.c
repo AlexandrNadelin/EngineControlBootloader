@@ -73,6 +73,7 @@ while (ITM_Port32(0) == 0)
 Memory* memory = (void*)FIRST_PAGE_PROPERTY_ADDR;
 
 uint16_t mainAppCRC=0;
+uint16_t memCrc =0;
 
 HTTPServer httpServer;
 /* USER CODE END PV */
@@ -103,6 +104,16 @@ void runMainApp()
 	
   jumpToApplication();  //jump to user application
 }
+
+void Delay_ms(uint16_t time_ms)
+{
+  uint32_t time_takt = time_ms * 168000; // Переводим мс в такты процессора
+  time_takt /=5; // Уменьшаем значение в 5 раз (т.к. 1 цикл "for" выполняется 5 тактов процессора)
+  for(uint32_t i = 0; i < time_takt; i++) // ждем....
+  {
+    __ASM volatile ("nop");
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -121,7 +132,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  Delay_ms(300);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -145,19 +156,15 @@ int main(void)
 	
 	if(memory->magicFlag!=RUN_BOOTLOADER_MAGIC_FLAG)
 	{
-    mainAppCRC = calculateMainAppCRC();
+    //mainAppCRC = calculateMainAppCRC();
+		mainAppCRC = MODBUS_CRC16((uint8_t*)MAIN_APP_START_ADDR, MAIN_APP_SIZE-2);
+		memCrc = *(uint16_t*)(MAIN_APP_START_ADDR + MAIN_APP_SIZE - 2);
 		if(memory->magicFlag==RUN_MAIN_APP_WITH_DELAY_MAGIC_FLAG)
 		{
 			//Крутимся 3 секунды в общем цикле
 		}
-		else if(memory->magicFlag==RUN_MAIN_APP_DEFAULT_MAGIC_FLAG && (mainAppCRC==0||(IsDebuggerConnected()&&(*(uint32_t*)MAIN_APP_START_ADDR)!=0xFFFFFFFF)))
-		{
-			runMainApp();
-		}
-		else if(memory->magicFlag==RUN_MAIN_APP_MAGIC_FLAG && (mainAppCRC==0||(IsDebuggerConnected()&&(*(uint32_t*)MAIN_APP_START_ADDR)!=0xFFFFFFFF)))
-		{
-			runMainApp();
-		}
+		else if(memory->magicFlag==RUN_MAIN_APP_DEFAULT_MAGIC_FLAG && (/*mainAppCRC==0*/mainAppCRC==memCrc||IsDebuggerConnected()))runMainApp();
+		else if(memory->magicFlag==RUN_MAIN_APP_MAGIC_FLAG && (/*mainAppCRC==0*/mainAppCRC==memCrc||IsDebuggerConnected()))runMainApp();
 	}
 	else memoryWriteMagicFlag(RUN_MAIN_APP_DEFAULT_MAGIC_FLAG);
 	
@@ -185,7 +192,7 @@ int main(void)
 		
 		MX_LWIP_Process();
 		
-		if(memory->magicFlag==RUN_MAIN_APP_WITH_DELAY_MAGIC_FLAG &&(mainAppCRC==0||IsDebuggerConnected())&& GetTimeSpan(startAppTime,HAL_GetTick())>3000)
+		if(memory->magicFlag==RUN_MAIN_APP_WITH_DELAY_MAGIC_FLAG &&(/*mainAppCRC==0*/mainAppCRC==memCrc||IsDebuggerConnected())&& GetTimeSpan(startAppTime,HAL_GetTick())>5000)
 		{
 			memoryWriteMagicFlag(RUN_MAIN_APP_DEFAULT_MAGIC_FLAG);
 			runMainApp();

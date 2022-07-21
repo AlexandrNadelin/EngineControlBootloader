@@ -50,7 +50,7 @@ uint16_t calculateMainAppCRC(void);
 void writeMainAppCRC(uint16_t crc);
 
 //uint16_t calculateMainAppCRCTmp(void);
-
+uint16_t MODBUS_CRC16(uint8_t *buf, uint32_t len );
 void Memory_Init(void);
 void memoryWriteNetworkParameters(NetworkParameters* networkParameters);
 void memoryWriteMagicFlag(uint32_t magicFlag);

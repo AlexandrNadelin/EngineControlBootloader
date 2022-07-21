@@ -153,11 +153,17 @@ void tcpDataProcess(HTTPConnection* connection, uint8_t* request, uint16_t reque
 	struct fs_file file;
 	if(connection->dataToReceive>0)
 	{
-		updDataProcess(request,requestLength,0);
-		
-		connection->dataToReceive-=requestLength;
-		if(connection->dataToReceive<=0)
+		if(connection->dataToReceive-requestLength==0)
 		{
+			updDataProcess(request,requestLength,0);
+			connection->dataToReceive=0;
+			
+			//Вычисляем контрольную сумму, записываем ее в конец
+			HAL_FLASH_Unlock();
+			uint16_t additionCRCPage = MODBUS_CRC16((uint8_t*)MAIN_APP_START_ADDR, MAIN_APP_SIZE-2);
+	    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,MAIN_APP_START_ADDR + MAIN_APP_SIZE - 2,additionCRCPage);
+			HAL_FLASH_Lock();
+			
 			//Отвечаем что данные принятыuint8_t HttpHeaderBuffer[SIZE_HEADER_TMP_BUFFER];
       uint8_t HttpHeaderBuffer[SIZE_HEADER_TMP_BUFFER];
 			uint16_t headerLenght = sprintf((char*)HttpHeaderBuffer
@@ -170,6 +176,23 @@ void tcpDataProcess(HTTPConnection* connection, uint8_t* request, uint16_t reque
 				printErrT(connection->err);
 				return;
 			}
+		}
+		else if(connection->dataToReceive-requestLength>0)
+		{
+			updDataProcess(request,requestLength,0);
+			connection->dataToReceive-=requestLength;			
+		}
+		else// if(connection->dataToReceive-requestLength<0)//Ошибка длинны
+		{
+			connection->dataToReceive-=requestLength;	
+			uint8_t HttpHeaderBuffer[SIZE_HEADER_TMP_BUFFER];
+			uint16_t headerLenght = sprintf((char*)HttpHeaderBuffer,"HTTP/1.1 400 Bad Request\r\nServer: lwIP/1.3.1 (http://savannah.nongnu.org/projects/lwip)\r\n\r\n");
+		  if((connection->err = tcp_write(connection->pcb,HttpHeaderBuffer,headerLenght,TCP_WRITE_FLAG_COPY))!=ERR_OK ||(connection->err = tcp_output(connection->pcb))!=HAL_OK)
+		  {
+			  printf("write Bad Request");
+			  printErrT(connection->err);
+			  return;
+		  }
 		}
 	}
 	else if(memcmp(request,"GET / HTTP/1.1",sizeof("GET / HTTP/1.1")-1)==0 || memcmp(request,"Update.html",sizeof("Update.html")-1)==0)//
@@ -281,7 +304,6 @@ void tcpDataProcess(HTTPConnection* connection, uint8_t* request, uint16_t reque
 		if(eraseSector(0x080A0000)!=HAL_OK)printf("Erase sector error\r\n");
 		if(eraseSector(0x080C0000)!=HAL_OK)printf("Erase sector error\r\n");
 		if(eraseSector(0x080E0000)!=HAL_OK)printf("Erase sector error\r\n");
-		HAL_FLASH_Lock();
 		
 		
 		//Обрабатываем данные пакета
@@ -641,6 +663,18 @@ void HTTPServer_Init(HTTPServer* httpServer)
 	tcp_accept(httpServer->mainPcb,HTTPServerAccept);
 
 	//tcp_poll(httpServer->mainPcb, httpServerPoll, 2);
-	printf("HTTP Server started.\r\n");
+	printf("HTTP Server started. IP %u.%u.%u.%u, Mask  %u.%u.%u.%u, Gate  %u.%u.%u.%u\r\n"
+	,memory->networkParameters.ipAddr[0]
+	,memory->networkParameters.ipAddr[1]
+	,memory->networkParameters.ipAddr[2]
+	,memory->networkParameters.ipAddr[3]
+	,memory->networkParameters.netMask[0]
+	,memory->networkParameters.netMask[1]
+	,memory->networkParameters.netMask[2]
+	,memory->networkParameters.netMask[3]
+	,memory->networkParameters.gateWay[0]
+	,memory->networkParameters.gateWay[1]
+	,memory->networkParameters.gateWay[2]
+	,memory->networkParameters.gateWay[3]);
 }
 

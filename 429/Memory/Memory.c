@@ -1,6 +1,6 @@
 #include "Memory.h"
 
-static uint16_t MODBUS_CRC16(uint8_t *buf, uint32_t len )
+uint16_t MODBUS_CRC16(uint8_t *buf, uint32_t len )
 {
 	uint16_t crc = 0xFFFF;
 	unsigned int i = 0;
@@ -195,18 +195,18 @@ void Memory_Init(void)//Memory* memory)
 		
     //isMainProgrammMustStart = 0xFFFFFFFF because flash erased
 		
-		/*NetworkParameters networkParameters ={
-			.ipAddr={192,168,4,251},
-			.netMask={255,255,255,0},
-	    .gateWay={192,168,4,001},
-			.modbusPort=502,
-		};*/
 		NetworkParameters networkParameters ={
+			.ipAddr={192,168,1,251},
+			.netMask={255,255,255,0},
+	    .gateWay={192,168,1,001},
+			.modbusPort=502,
+		};
+		/*NetworkParameters networkParameters ={
 			.ipAddr={172,16,2,52},
 			.netMask={255,255,0,0},
 	    .gateWay={172,16,0,13},
 			.modbusPort=502,
-		};
+		};*/
 		
 		for(i=0;i<sizeof(NetworkParameters)/4;i++)
 		{
